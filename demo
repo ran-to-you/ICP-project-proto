@@ -1,0 +1,55 @@
+// Import the necessary modules
+import Debug "mo:base/Debug";
+import Nat "mo:base/Nat";
+
+// Define the Token actor (smart contract)
+actor Token {
+
+    // Define the state variables
+    stable var totalSupply : Nat = 0;
+    stable var balances : Trie.Trie<Nat, Nat> = Trie.empty();
+
+    // Function to initialize the contract with a total supply and assign it to the deployer
+    public shared({caller}) func initialize(initialSupply: Nat) : async Bool {
+        totalSupply := initialSupply;
+        balances := Trie.put(balances, caller, initialSupply);
+        return true;
+    };
+
+    // Function to get the total supply of tokens
+    public query func getTotalSupply() : async Nat {
+        return totalSupply;
+    };
+
+    // Function to get the balance of a specific account
+    public query func getBalance(account : Principal) : async Nat {
+        switch (Trie.find(balances, account)) {
+            case (?balance) balance;
+            case null 0;
+        }
+    };
+
+    // Function to transfer tokens from one account to another
+    public shared({caller}) func transfer(to: Principal, amount: Nat) : async Bool {
+        let callerBalance = switch (Trie.find(balances, caller)) {
+            case (?balance) balance;
+            case null 0;
+        };
+
+        if (callerBalance < amount) {
+            return false;
+        };
+
+        balances := Trie.put(balances, caller, callerBalance - amount);
+
+        let recipientBalance = switch (Trie.find(balances, to)) {
+            case (?balance) balance;
+            case null 0;
+        };
+
+        balances := Trie.put(balances, to, recipientBalance + amount);
+
+        return true;
+    };
+
+};
